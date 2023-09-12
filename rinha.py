@@ -129,13 +129,21 @@ class Generator:
 
             value = self.builder.icmp_signed('<', lhs, rhs)
 
-        if operator == 'Sub':
+        elif operator == 'Sub':
 
             value = self.builder.sub(lhs, rhs)
 
-        if operator == 'Add':
+        elif operator == 'Add':
 
             value = self.builder.add(lhs, rhs)
+
+        elif operator == 'Eq':
+
+            value = self.builder.icmp_signed('==', lhs, rhs)
+
+        else:
+
+            raise Exception('Invalid operator')
 
         return value
 
@@ -177,7 +185,7 @@ class Generator:
 
 
 # Load your AST from the JSON file
-with open('files/fib.json') as f:
+with open('files/sum.json') as f:
 
     ast_data = json.load(f)
 
