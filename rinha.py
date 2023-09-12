@@ -5,8 +5,6 @@ import json
 
 int32 = ir.IntType(32)
 int8 = ir.IntType(8)
-float = ir.FloatType()
-void = ir.VoidType()
 
 
 class Generator:
@@ -42,8 +40,7 @@ class Generator:
 
         elif kind == 'Var':
 
-            self.builder.ret(self.builder.load(
-                self.variables[expression['text']]))
+            self.builder.ret(self.variables[expression['text']])
 
         elif kind == 'Print':
 
@@ -62,32 +59,42 @@ class Generator:
         self.builder = ir.IRBuilder(entry)
 
         value = self.visit_value(expression['value'])
-        format_str = ir.GlobalVariable(self.module, ir.ArrayType(
-            int8, len(b"%d\n") + 1), name="format_str")
-        format_str.initializer = ir.Constant(ir.ArrayType(
-            int8, len(b"%d\n") + 1), bytearray(b"%d\n\0"))
-        format_str.align = 1
+
+        zero = ir.Constant(int32, 0)
+        format_str = "%d\n"
+
+        format_constant = ir.Constant(ir.ArrayType(ir.IntType(8), len(
+            format_str)), bytearray(format_str.encode("utf8")))
+        format_global = ir.GlobalVariable(
+            self.module, format_constant.type, name="format_string")
+        format_global.linkage = 'internal'
+        format_global.global_constant = True
+        format_global.initializer = format_constant
+        format_global.align = 1
+
+        format_ptr = self.builder.gep(format_global, [zero, zero])
+        format_ptr = self.builder.bitcast(
+            format_ptr, ir.IntType(8).as_pointer())
 
         printf_func, _ = self.variables['printf']
-        printf_args = [format_str.gep(
-            [ir.Constant(int32, 0), ir.Constant(int32, 0)]), value]
-        self.builder.call(printf_func, printf_args)
+        self.builder.call(printf_func, [format_ptr, value])
 
-        self.builder.ret(ir.Constant(int32, 0))
+        self.builder.ret(zero)
 
     def visit_value(self, value):
 
         kind = value['kind']
         if kind == 'Var':
 
-            ptr = self.variables[value['text']
-                                 ] if value['text'] in self.variables else None
+            text = value['text']
+
+            ptr = self.variables[text] if text in self.variables else None
             if ptr is None:
 
-                ptr = self.builder.alloca(int32,  name=value['text'])
-                self.variables[value['text']] = ptr
+                ptr = self.builder.alloca(int32,  name=text)
+                self.variables[text] = ptr
 
-            return self.builder.load(ptr)
+            return ptr
 
         if kind == 'Int':
 
@@ -147,7 +154,8 @@ class Generator:
 
             with otherwise:
 
-                self.visit_value(orelse)
+                value = self.visit_value(orelse)
+                self.builder.ret(value)
 
         self.builder.ret(ir.Constant(int32, 0))
 
@@ -155,13 +163,15 @@ class Generator:
 
         parameters = value['parameters']
 
-        types = len(parameters) * [int32]
+        types = [int32] * len(parameters)
 
         fnty = ir.FunctionType(int32, types)
         func = ir.Function(self.module, fnty, name)
         entry = func.append_basic_block('entry')
 
         self.builder = ir.IRBuilder(entry)
+
+        self.variables['n'] = self.builder.function.args[0]
 
         self.generate(value['value'])
 
@@ -186,9 +196,6 @@ else:
 module = generator.module
 module.triple = llvm.get_default_triple()
 
-# Print the LLVM module
-print(module)
-
 # Initialize LLVM
 llvm.initialize()
 llvm.initialize_native_target()
@@ -198,7 +205,7 @@ target = llvm.Target.from_default_triple()
 target_machine = target.create_target_machine()
 module.data_layout = target_machine.target_data
 
-output_filename = "output.ll"  # Specify the output filename
+output_filename = "output.ll"
 triple = llvm.get_default_triple()
 module.triple = triple
 
