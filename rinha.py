@@ -13,11 +13,14 @@ class Generator:
 
         self.module = ir.Module('module')
 
-        printf_ty = ir.FunctionType(
+        printf_type = ir.FunctionType(
             int32, [ir.PointerType(int8)], var_arg=True)
-        func = ir.Function(self.module, printf_ty, 'printf')
+        printf_func = ir.Function(self.module, printf_type, 'printf')
 
-        self.variables = {'printf': (func, int32)}
+        main_type = ir.FunctionType(int32, [])
+        main_func = ir.Function(self.module, main_type, 'main')
+
+        self.variables = {'printf': printf_func, 'main': main_func}
 
         self.builder = None
 
@@ -48,22 +51,23 @@ class Generator:
 
         if next is not None:
 
+            self.builder = None
             self.generate(next)
 
     def generate_print(self, expression):
 
-        fnty = ir.FunctionType(int32, [])
-        func = ir.Function(self.module, fnty, 'main')
-        entry = func.append_basic_block('main_entry')
+        value = expression['value']
+        value_kind = value['kind']
 
-        self.builder = ir.IRBuilder(entry)
+        self.builder = ir.IRBuilder(
+            self.variables['main'].append_basic_block('entry')) if self.builder is None else self.builder
 
-        value = self.visit_value(expression['value'])
+        value = self.visit_value(value)
 
         zero = ir.Constant(int32, 0)
-        format_str = "%d\n"
+        format_str = "%s\n" if value_kind == 'Str' else "%d\n"
 
-        format_constant = ir.Constant(ir.ArrayType(ir.IntType(8), len(
+        format_constant = ir.Constant(ir.ArrayType(int8, len(
             format_str)), bytearray(format_str.encode("utf8")))
         format_global = ir.GlobalVariable(
             self.module, format_constant.type, name="format_string")
@@ -74,9 +78,9 @@ class Generator:
 
         format_ptr = self.builder.gep(format_global, [zero, zero])
         format_ptr = self.builder.bitcast(
-            format_ptr, ir.IntType(8).as_pointer())
+            format_ptr, int8.as_pointer())
 
-        printf_func, _ = self.variables['printf']
+        printf_func = self.variables['printf']
         self.builder.call(printf_func, [format_ptr, value])
 
         self.builder.ret(zero)
@@ -94,6 +98,15 @@ class Generator:
                 ptr = self.builder.alloca(int32,  name=text)
                 self.variables[text] = ptr
 
+            return ptr
+
+        if kind == 'Str':
+
+            string = f'{value["value"]}\0'
+            ptr = self.builder.alloca(
+                ir.ArrayType(int8, len(string)), name='str')
+            self.builder.store(ir.Constant(ir.ArrayType(int8, len(string)), bytearray(
+                string.encode("utf8"))), ptr)
             return ptr
 
         if kind == 'Int':
@@ -173,19 +186,21 @@ class Generator:
 
         types = [int32] * len(parameters)
 
-        fnty = ir.FunctionType(int32, types)
-        func = ir.Function(self.module, fnty, name)
+        func_type = ir.FunctionType(int32, types)
+        func = ir.Function(self.module, func_type, name)
         entry = func.append_basic_block('entry')
 
         self.builder = ir.IRBuilder(entry)
 
-        self.variables['n'] = self.builder.function.args[0]
+        for param, arg in zip(parameters, self.builder.function.args):
+
+            self.variables[param['text']] = arg
 
         self.generate(value['value'])
 
 
 # Load your AST from the JSON file
-with open('files/sum.json') as f:
+with open('files/print.json') as f:
 
     ast_data = json.load(f)
 
