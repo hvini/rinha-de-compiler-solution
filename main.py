@@ -2,6 +2,7 @@ import llvmlite.binding as llvm
 from rinha import IntermediateRepresentation
 import subprocess
 import json
+import time
 
 with open('files/combination.json') as f:
 
@@ -41,5 +42,11 @@ subprocess.run(compile_command, check=True)
 link_command = ["clang", "-o", "output", "output.o"]
 subprocess.run(link_command, check=True)
 
+start_time = time.time()
+
 execute_command = ["./output"]
 subprocess.run(execute_command, check=True)
+
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"Execution elapsed time: {elapsed_time} seconds")

@@ -20,7 +20,7 @@ class IntermediateRepresentation:
         self.__variables = {'printf': printf_func, 'main': main_func}
 
         self.__builder = None
-        self.aa = []
+        self.__next_expr = []
 
     def generate(self, expression):
 
@@ -31,7 +31,7 @@ class IntermediateRepresentation:
 
         if kind == 'Let':
 
-            self.aa.append(next)
+            self.__next_expr.append(next)
 
             if value['kind'] == 'Function':
 
@@ -42,14 +42,14 @@ class IntermediateRepresentation:
                 value, _ = self._visit_value(value)
                 self.__variables[name['text']] = value
 
-            if len(self.aa) > 1:
+            if len(self.__next_expr) > 1:
 
-                val = self.aa.pop()
+                val = self.__next_expr.pop()
                 self.generate(val)
 
             else:
 
-                val = self.aa.pop()
+                val = self.__next_expr.pop()
                 self.__builder = None
                 self.generate(val)
 
