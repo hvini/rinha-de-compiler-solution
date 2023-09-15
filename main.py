@@ -3,7 +3,7 @@ from rinha import IntermediateRepresentation
 import subprocess
 import json
 
-with open('files/print.json') as f:
+with open('files/combination.json') as f:
 
     ast_data = json.load(f)
 

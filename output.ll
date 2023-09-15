@@ -7,11 +7,31 @@ declare i32 @"printf"(i8* %".1", ...)
 define i32 @"main"()
 {
 entry:
-  %"str" = alloca [12 x i8]
-  store [12 x i8] c"Hello world\00", [12 x i8]* %"str"
+  %".2" = call i32 @"combination"(i32 10, i32 2)
   %".3" = getelementptr [3 x i8], [3 x i8]* @"format_string", i32 0, i32 0
-  %".4" = call i32 (i8*, ...) @"printf"(i8* %".3", [12 x i8]* %"str")
+  %".4" = call i32 (i8*, ...) @"printf"(i8* %".3", i32 %".2")
   ret i32 0
 }
 
-@"format_string" = internal constant [3 x i8] c"%s\0a", align 1
+define i32 @"combination"(i32 %".1", i32 %".2")
+{
+entry:
+  %".4" = icmp eq i32 %".2", 0
+  %".5" = icmp eq i32 %".2", %".1"
+  %".6" = or i1 %".4", %".5"
+  br i1 %".6", label %"entry.if", label %"entry.else"
+entry.if:
+  ret i32 1
+entry.else:
+  %".9" = sub i32 %".1", 1
+  %".10" = sub i32 %".2", 1
+  %".11" = call i32 @"combination"(i32 %".9", i32 %".10")
+  %".12" = sub i32 %".1", 1
+  %".13" = call i32 @"combination"(i32 %".12", i32 %".2")
+  %".14" = add i32 %".11", %".13"
+  ret i32 %".14"
+entry.endif:
+  ret i32 0
+}
+
+@"format_string" = internal constant [3 x i8] c"%d\0a", align 1

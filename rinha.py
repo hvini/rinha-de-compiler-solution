@@ -20,6 +20,7 @@ class IntermediateRepresentation:
         self.__variables = {'printf': printf_func, 'main': main_func}
 
         self.__builder = None
+        self.aa = []
 
     def generate(self, expression):
 
@@ -30,9 +31,27 @@ class IntermediateRepresentation:
 
         if kind == 'Let':
 
+            self.aa.append(next)
+
             if value['kind'] == 'Function':
 
                 self._generate_function(name['text'], value)
+
+            if value['kind'] == 'Binary':
+
+                value, _ = self._visit_value(value)
+                self.__variables[name['text']] = value
+
+            if len(self.aa) > 1:
+
+                val = self.aa.pop()
+                self.generate(val)
+
+            else:
+
+                val = self.aa.pop()
+                self.__builder = None
+                self.generate(val)
 
         elif kind == 'If':
 
@@ -45,11 +64,6 @@ class IntermediateRepresentation:
         elif kind == 'Print':
 
             self._generate_print(expression)
-
-        if next is not None:
-
-            self.__builder = None
-            self.generate(next)
 
     def _generate_print(self, expression):
 
@@ -148,6 +162,10 @@ class IntermediateRepresentation:
 
             value = self.__builder.icmp_signed('==', lhs, rhs)
 
+        elif operator == 'Or':
+
+            value = self.__builder.or_(lhs, rhs)
+
         else:
 
             raise Exception('Invalid operator')
@@ -165,7 +183,13 @@ class IntermediateRepresentation:
 
             with true:
 
-                self.generate(then)
+                if then['kind'] == 'Int':
+
+                    self.__builder.ret(ir.Constant(int32, then['value']))
+
+                else:
+
+                    self.generate(then)
 
             with otherwise:
 
