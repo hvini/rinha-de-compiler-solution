@@ -5,12 +5,13 @@ import json
 import time
 import os
 
-ast_files = [f for f in os.listdir('files') if f.endswith('.json')]
+var_dir = '/var/rinha'
+ast_files = [f for f in os.listdir(var_dir) if f.endswith('.json')]
 
 
 for ast_file in ast_files:
 
-    with open(f'files/{ast_file}') as f:
+    with open(f'{var_dir}/{ast_file}') as f:
 
         ast_data = json.load(f)
 

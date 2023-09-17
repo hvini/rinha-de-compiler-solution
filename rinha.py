@@ -16,8 +16,10 @@ class IntermediateRepresentation:
 
         main_type = ir.FunctionType(int32, [])
         main_func = ir.Function(self.module, main_type, 'main')
+        main_builder = ir.IRBuilder(
+            main_func.append_basic_block('entry'))
 
-        self.__variables = {'printf': printf_func, 'main': main_func}
+        self.__variables = {'printf': printf_func, 'main': main_builder}
 
         self.__builder = None
         self.__next_expr = []
@@ -29,29 +31,17 @@ class IntermediateRepresentation:
         value = expression['value'] if 'value' in expression else None
         next = expression['next'] if 'next' in expression else None
 
+        self.__builder = self.__variables['main'] if self.__builder is None else self.__builder
+
         if kind == 'Let':
 
             self.__next_expr.append(next)
 
-            if value['kind'] == 'Function':
+            self._generate_let(name, value)
 
-                self._generate_function(name['text'], value)
+            if len(self.__next_expr) > 0:
 
-            if value['kind'] == 'Binary':
-
-                value, _ = self._visit_value(value)
-                self.__variables[name['text']] = value
-
-            if len(self.__next_expr) > 1:
-
-                val = self.__next_expr.pop()
-                self.generate(val)
-
-            else:
-
-                val = self.__next_expr.pop()
-                self.__builder = None
-                self.generate(val)
+                self.generate(self.__next_expr.pop())
 
         elif kind == 'If':
 
@@ -65,24 +55,82 @@ class IntermediateRepresentation:
 
             self._generate_print(expression)
 
+    def _generate_let(self, name, value):
+
+        kind = value['kind']
+        text = name['text']
+
+        if kind == 'Function':
+
+            self._generate_function(text, value)
+
+        elif kind == 'Binary':
+
+            value, _ = self._visit_value(value)
+            self.__variables[text] = value
+
+        elif kind == 'Int':
+
+            ptr = self.__builder.alloca(int32,  name=text)
+            self.__builder.store(ir.Constant(
+                int32, value['value']), ptr)
+            self.__variables[text] = ptr
+
+        elif kind == 'Str':
+
+            string = f'{value["value"]}\0'
+            ptr = self.__builder.alloca(
+                ir.ArrayType(int8, len(string)), name=text)
+            self.__builder.store(ir.Constant(ir.ArrayType(int8, len(string)), bytearray(
+                string.encode("utf8"))), ptr)
+            self.__variables[text] = ptr
+
+        elif kind == 'Print':
+
+            self._generate_print(value)
+
+    def _get_pointee_type(self, value):
+
+        if value.type == int32:
+
+            return 'Int'
+
+        elif value.type == ir.ArrayType(int8, len(value.type)):
+
+            return 'Str'
+
+        raise Exception('Invalid print type')
+
     def _generate_print(self, expression):
 
-        self.__builder = ir.IRBuilder(
-            self.__variables['main'].append_basic_block('entry')) if self.__builder is None else self.__builder
-
         value, Type = self._visit_value(expression['value'])
+        if Type == 'Var':
+
+            ptr_val = self.__builder.load(value)
+            Type = self._get_pointee_type(ptr_val)
+            value = ptr_val if Type == 'Int' else value
 
         zero = ir.Constant(int32, 0)
-        format_str = "%s\n" if Type == 'Str' else "%d\n"
 
-        format_constant = ir.Constant(ir.ArrayType(int8, len(
-            format_str)), bytearray(format_str.encode("utf8")))
-        format_global = ir.GlobalVariable(
-            self.module, format_constant.type, name="format_string")
-        format_global.linkage = 'internal'
-        format_global.global_constant = True
-        format_global.initializer = format_constant
-        format_global.align = 1
+        format_name = f'format_{Type}'
+        if format_name in self.__variables:
+
+            format_global = self.__variables[format_name]
+
+        else:
+
+            format_str = "%s\n\0" if Type == 'Str' else "%d\n\0"
+
+            format_constant = ir.Constant(ir.ArrayType(int8, len(
+                format_str)), bytearray(format_str.encode("utf8")))
+            format_global = ir.GlobalVariable(
+                self.module, format_constant.type, name=format_name)
+            format_global.linkage = 'internal'
+            format_global.global_constant = True
+            format_global.initializer = format_constant
+            format_global.align = 1
+
+            self.__variables[format_name] = format_global
 
         format_ptr = self.__builder.gep(format_global, [zero, zero])
         format_ptr = self.__builder.bitcast(
@@ -91,7 +139,8 @@ class IntermediateRepresentation:
         printf_func = self.__variables['printf']
         self.__builder.call(printf_func, [format_ptr, value])
 
-        self.__builder.ret(zero)
+        if len(self.__next_expr) == 0:
+            self.__builder.ret(ir.Constant(int32, 0))
 
     def _visit_value(self, value):
 
@@ -215,3 +264,5 @@ class IntermediateRepresentation:
             self.__variables[param['text']] = arg
 
         self.generate(value['value'])
+
+        self.__builder = None

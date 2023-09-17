@@ -15,7 +15,7 @@ WORKDIR /app
 COPY main.py /app/main.py
 COPY rinha.py /app/rinha.py
 
-COPY files /app/files
+COPY files /var/rinha
 
 RUN pip3 install llvmlite
 

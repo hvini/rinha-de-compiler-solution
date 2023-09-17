@@ -8,7 +8,7 @@ define i32 @"main"()
 {
 entry:
   %".2" = call i32 @"combination"(i32 10, i32 2)
-  %".3" = getelementptr [3 x i8], [3 x i8]* @"format_string", i32 0, i32 0
+  %".3" = getelementptr [4 x i8], [4 x i8]* @"format_Call", i32 0, i32 0
   %".4" = call i32 (i8*, ...) @"printf"(i8* %".3", i32 %".2")
   ret i32 0
 }
@@ -34,4 +34,4 @@ entry.endif:
   ret i32 0
 }
 
-@"format_string" = internal constant [3 x i8] c"%d\0a", align 1
+@"format_Call" = internal constant [4 x i8] c"%d\0a\00", align 1
