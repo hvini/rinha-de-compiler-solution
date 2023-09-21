@@ -3,60 +3,52 @@ from rinha import IntermediateRepresentation
 import subprocess
 import json
 import time
-import os
 
-var_dir = '/var/rinha'
-ast_files = [f for f in os.listdir(var_dir) if f.endswith('.json')]
+with open('/var/rinha/source.rinha.json') as f:
 
+    ast_data = json.load(f)
 
-for ast_file in ast_files:
+ir = IntermediateRepresentation()
 
-    with open(f'{var_dir}/{ast_file}') as f:
+if (ast_data['expression']):
 
-        ast_data = json.load(f)
+    ir.generate(ast_data['expression'])
 
-    ir = IntermediateRepresentation()
+else:
 
-    if (ast_data['expression']):
+    raise Exception('Invalid AST')
 
-        ir.generate(ast_data['expression'])
+module = ir.module
+module.triple = llvm.get_default_triple()
 
-    else:
+llvm.initialize()
+llvm.initialize_native_target()
+llvm.initialize_native_asmprinter()
 
-        raise Exception('Invalid AST')
+target = llvm.Target.from_default_triple()
+target_machine = target.create_target_machine()
+module.data_layout = target_machine.target_data
 
-    module = ir.module
-    module.triple = llvm.get_default_triple()
+output_filename = f"output.ll"
+triple = llvm.get_default_triple()
+module.triple = triple
 
-    llvm.initialize()
-    llvm.initialize_native_target()
-    llvm.initialize_native_asmprinter()
+with open(output_filename, "w") as output_file:
+    output_file.write(str(module))
 
-    target = llvm.Target.from_default_triple()
-    target_machine = target.create_target_machine()
-    module.data_layout = target_machine.target_data
+compile_command = ["llc", "-filetype=obj", "-relocation-model=pic",
+                   "-o", "output.o", output_filename]
+subprocess.run(compile_command, check=True)
 
-    output_filename = f"output.ll"
-    triple = llvm.get_default_triple()
-    module.triple = triple
+link_command = ["clang", "-o", "output", "output.o", "-fPIE"]
+subprocess.run(link_command, check=True)
 
-    with open(output_filename, "w") as output_file:
-        output_file.write(str(module))
+start_time = time.time()
 
-    compile_command = ["llc", "-filetype=obj", "-relocation-model=pic",
-                       "-o", "output.o", output_filename]
-    subprocess.run(compile_command, check=True)
+execute_command = ["./output"]
+subprocess.run(execute_command, check=True)
 
-    link_command = ["clang", "-o", "output", "output.o", "-fPIE"]
-    subprocess.run(link_command, check=True)
-
-    print(ast_file)
-    start_time = time.time()
-
-    execute_command = ["./output"]
-    subprocess.run(execute_command, check=True)
-
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(f'{elapsed_time}s')
-    print('\n')
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f'{elapsed_time}s')
+print('\n')
