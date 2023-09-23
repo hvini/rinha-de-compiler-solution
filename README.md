@@ -1,6 +1,6 @@
 # Rinha de Compilers 
 
-This solution uses llvm to generate a IR representation of [rinha AST](https://github.com/aripiprazole/rinha-de-compiler/blob/main/SPECS.md), optimizes the generated IR and finally generates the target code
+Essa solucão utiliza o framework LLVM para gerar uma representação intermediaria da [AST da rinha](https://github.com/aripiprazole/rinha-de-compiler/blob/main/SPECS.md), aplica otimizacões e gera o executável para a maquina alvo
 
 ## requirements
 
@@ -19,6 +19,8 @@ pip install llvmlite
 ```
 python main.py
 ```
+
+:warning: **tenha certeza de ter o arquivo /var/rinha/source.rinha.json antes de executar o script**
 
 ### docker
 
