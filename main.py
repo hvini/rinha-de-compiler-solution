@@ -2,7 +2,6 @@ import llvmlite.binding as llvm
 from rinha import IntermediateRepresentation
 import subprocess
 import json
-import time
 
 with open('/var/rinha/source.rinha.json') as f:
 
@@ -37,18 +36,11 @@ with open(output_filename, "w") as output_file:
     output_file.write(str(module))
 
 compile_command = ["llc", "-filetype=obj", "-relocation-model=pic",
-                   "-o", "output.o", output_filename]
+                   "-tailcallopt", "-o", "output.o", output_filename]
 subprocess.run(compile_command, check=True)
 
 link_command = ["clang", "-o", "output", "output.o", "-fPIE"]
 subprocess.run(link_command, check=True)
 
-start_time = time.time()
-
 execute_command = ["./output"]
 subprocess.run(execute_command, check=True)
-
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f'{elapsed_time}s')
-print('\n')

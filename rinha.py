@@ -199,6 +199,10 @@ class IntermediateRepresentation:
 
             value = self.__builder.icmp_signed('<', lhs, rhs)
 
+        elif operator == 'Gt':
+
+            value = self.__builder.icmp_signed('>', lhs, rhs)
+
         elif operator == 'Sub':
 
             value = self.__builder.sub(lhs, rhs)
@@ -214,6 +218,10 @@ class IntermediateRepresentation:
         elif operator == 'Or':
 
             value = self.__builder.or_(lhs, rhs)
+
+        elif operator == 'Mul':
+
+            value = self.__builder.mul(lhs, rhs)
 
         else:
 
