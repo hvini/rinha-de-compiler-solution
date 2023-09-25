@@ -55,6 +55,10 @@ class IntermediateRepresentation:
 
             self._generate_print(expression)
 
+        else:
+
+            raise Exception('Invalid expression')
+
     def _generate_let(self, name, value):
 
         kind = value['kind']
@@ -88,6 +92,10 @@ class IntermediateRepresentation:
         elif kind == 'Print':
 
             self._generate_print(value)
+
+        else:
+
+            raise Exception('Invalid')
 
     def _get_pointee_type(self, value):
 
@@ -177,6 +185,8 @@ class IntermediateRepresentation:
         if kind == 'Call':
 
             return self._visit_call(value), kind
+
+        raise Exception('Invalid value')
 
     def _visit_call(self, value):
 
