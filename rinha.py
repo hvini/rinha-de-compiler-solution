@@ -233,6 +233,30 @@ class IntermediateRepresentation:
 
             value = self.__builder.mul(lhs, rhs)
 
+        elif operator == 'Div':
+
+            value = self.__builder.sdiv(lhs, rhs)
+
+        elif operator == 'Rem':
+
+            value = self.__builder.srem(lhs, rhs)
+
+        elif operator == 'Neq':
+
+            value = self.__builder.icmp_signed('!=', lhs, rhs)
+
+        elif operator == 'And':
+                
+            value = self.__builder.and_(lhs, rhs)
+        
+        elif operator == 'Lte':
+
+            value = self.__builder.icmp_signed('<=', lhs, rhs)
+
+        elif operator == 'Gte':
+
+            value = self.__builder.icmp_signed('>=', lhs, rhs)
+
         else:
 
             raise Exception('Invalid operator')
